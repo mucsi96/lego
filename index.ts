@@ -1,8 +1,8 @@
 import { readFile, stat, mkdir } from "fs/promises";
-import { finished } from "stream/promises";
+import { finished, pipeline } from "stream/promises";
 import { PDFDocument } from "pdf-lib";
 import { createWriteStream } from "fs";
-import { Readable } from "stream";
+import { Readable, Transform } from "stream";
 import { dirname, join } from "path";
 
 async function exists(file: string) {
@@ -16,15 +16,30 @@ async function exists(file: string) {
 
 async function main(name: string, url: string) {
   const path = join(__dirname, ".cache", name);
-  if (!await exists(path)) {
-    if (!await exists(dirname(path))) await mkdir(dirname(path));
+  if (!(await exists(path))) {
+    if (!(await exists(dirname(path)))) await mkdir(dirname(path));
 
     const fetchResponse = await fetch(url);
     if (!fetchResponse.body) {
       throw new Error("Response had no body");
     }
     const dest = createWriteStream(path);
-    await finished(Readable.fromWeb(fetchResponse.body).pipe(dest));
+    console.log(`Downloading ${name} from ${url}`);
+    let chunks = 0;
+    await pipeline(
+      Readable.fromWeb(fetchResponse.body),
+      new Transform({
+        transform(chunk, _encoding, callback) {
+          chunks++;
+          if (chunks % 100 === 0) {
+            process.stdout.write(".");
+          }
+          this.push(chunk);
+          callback();
+        },
+      }),
+      dest
+    );
   }
   const pdfData = await readFile(path);
   const pdfDoc = await PDFDocument.load(pdfData);
