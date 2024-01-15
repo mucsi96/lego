@@ -1,1 +1,1 @@
-- [PyMuPDF](https://pymupdf.readthedocs.io/en/latest/)
+- [PyMuPDF](https://pymupdf.readthedocs.io/en/latest)
