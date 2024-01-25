@@ -108,8 +108,8 @@ def extract_images_from_pdf(pdf_path: str, output_folder: str) -> None:
     document = fitz.open(pdf_path)
     # for page_number in range(document.page_count):
     # page_number = 17
-    # page_number = 10
-    page_number = 16
+    page_number = 10
+    # page_number = 16
     page = document[page_number]
     words = get_unique_word_positions(page)
     images = get_images_with_bbox(page)
