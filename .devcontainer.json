@@ -1,4 +1,14 @@
 {
-  "image": "mcr.microsoft.com/devcontainers/python:3",
+  // https://github.com/devcontainers/images/tree/main/src/base-debian
+  "image": "mcr.microsoft.com/devcontainers/base:debian-12",
+  "features": {
+    // https://containers.dev/features
+    "ghcr.io/rocker-org/devcontainer-features/apt-packages:1": {
+      "packages": "ffmpeg,libsm6,libxext6"
+    },
+    "ghcr.io/devcontainers/features/python:1": {
+      "version": "3.12"
+    }
+  },
   "postCreateCommand": "pip install -r requirements.txt"
 }

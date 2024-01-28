@@ -143,7 +143,7 @@ def main():
     pdf_path = ".cache/10305-lions-knights-castle.pdf"
     output_folder = "images"
 
-    rmtree(output_folder)
+    rmtree(output_folder, ignore_errors=True)
 
     makedirs(path.dirname(pdf_path), exist_ok=True)
     makedirs(output_folder)
