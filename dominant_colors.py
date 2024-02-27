@@ -25,4 +25,4 @@ sorted_labels = [bincount[i] for i in sorted_indices]
 sorted_colors = [rgba_colors[i] for i in sorted_indices]
 
 pyplot.pie(sorted_labels, None, None, sorted_colors)
-pyplot.savefig("images/11_2_1x_X9.plot.png")
+pyplot.show()

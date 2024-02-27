@@ -1,0 +1,1 @@
+- analyze LEGO inventory pages of instructions
