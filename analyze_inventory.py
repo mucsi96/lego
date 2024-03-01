@@ -28,14 +28,19 @@ def box_distance(a: Box, b: Box) -> int:
 
 
 def get_unique_word_positions(page: fitz.Page) -> List[WordBlock]:
-    return list(
-        set(
-            map(
-                lambda word: (word[0], word[1], word[2], word[3], word[4]),
-                page.get_textpage().extractWORDS(),
-            )
-        )
-    )
+    blocks = []
+
+    for block in page.get_textpage().extractDICT()['blocks']:
+        lines = []
+        for line in block['lines']:
+            for span in line['spans']:
+                # print(span['size'], span['font'], span['flags'], span['color'])
+                if span['size'] == 6.0 and span['font'] == 'CeraPro-Regular' and span['color'] == 1578517:
+                    lines.append(span['text'].strip())
+        if len(lines) > 0:
+            blocks.append((*block['bbox'], ' '.join(lines)))
+
+    return sorted(blocks, key=lambda block: block[1])
 
 
 def get_images_with_bbox(page: fitz.Page) -> List[ImageWithBBox]:
@@ -108,7 +113,7 @@ def extract_images_from_pdf(pdf_path: str, output_folder: str) -> None:
     document = fitz.open(pdf_path)
     # for page_number in range(document.page_count):
     # page_number = 17
-    page_number = 10
+    page_number = 281
     # page_number = 16
     page = document[page_number]
     words = get_unique_word_positions(page)
@@ -121,26 +126,26 @@ def extract_images_from_pdf(pdf_path: str, output_folder: str) -> None:
             y1,
             word,
         ) = word_block
-        if not re.match("^\\d+x$", word) or round(y1 - y0) != 10:
+        if not re.match("^\\d+x$", word):
             continue
 
-        step = get_step(words, word_block)
+        # step = get_step(words, word_block)
         (image_xref, image_name) = get_image(images, word_block)
         extracted_image = document.extract_image(image_xref)
         with open(
             path.join(
                 output_folder,
-                f'{page_number+1}_{step}_{word}_{image_name}.{extracted_image["ext"]}',
+                f'{page_number+1}_{image_name}_{word}.{extracted_image["ext"]}',
             ),
             "wb",
         ) as img_file:
             img_file.write(extracted_image["image"])
-        print(step, word, image_name)
+        print(image_name, word)
 
 
 def main():
-    pdf_url = "https://www.lego.com/cdn/product-assets/product.bi.core.pdf/6429215.pdf"
-    pdf_path = ".cache/10305-lions-knights-castle.pdf"
+    pdf_url = "https://www.lego.com/cdn/product-assets/product.bi.core.pdf/6429333.pdf"
+    pdf_path = ".cache/10305-lions-knights-castle-2.pdf"
     output_folder = "images"
 
     rmtree(output_folder, ignore_errors=True)
