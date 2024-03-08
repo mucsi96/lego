@@ -27,17 +27,17 @@ def box_distance(a: Box, b: Box) -> int:
     return max(gapx, gapy)
 
 
-def get_unique_word_positions(page: fitz.Page) -> List[WordBlock]:
+def get_unique_word_positions(page: fitz.Page, pattern: str, font: str, size: float, color: int) -> List[WordBlock]:
     blocks = []
 
     for block in page.get_textpage().extractDICT()['blocks']:
         lines = []
         for line in block['lines']:
             for span in line['spans']:
-                # print(span['size'], span['font'], span['flags'], span['color'])
-                if span['size'] == 6.0 and span['font'] == 'CeraPro-Regular' and span['color'] == 1578517:
+                # print(span['size'], span['font'], span['color'], span['text'])
+                if span['size'] == size and span['font'] == font and span['color'] == color:
                     lines.append(span['text'].strip())
-        if len(lines) > 0:
+        if len(lines) > 0 and re.match(pattern, ' '.join(lines)):
             blocks.append((*block['bbox'], ' '.join(lines)))
 
     return sorted(blocks, key=lambda block: block[1])
@@ -64,12 +64,10 @@ def get_images_with_bbox(page: fitz.Page) -> List[ImageWithBBox]:
     )
 
 
-def get_step(all_words: List[WordBlock], word_block: WordBlock) -> int:
+def get_closest_word_block(all_words: List[WordBlock], word_block: WordBlock) -> int:
     closest = None
     closest_dist = None
     for x0, y0, x1, y1, word in all_words:
-        if not re.match("^\\d+$", word) or round(y1 - y0) < 30:
-            continue
         dist = box_distance(
             (word_block[0], word_block[1], word_block[2], word_block[3]),
             (x0, y0, x1, y1),
@@ -77,10 +75,10 @@ def get_step(all_words: List[WordBlock], word_block: WordBlock) -> int:
         if closest_dist == None or dist < closest_dist:
             closest = word
             closest_dist = dist
-    return int(closest)
+    return closest
 
 
-def get_image(all_images: List, word_block: WordBlock) -> (int, str):
+def get_closest_image(all_images: List, word_block: WordBlock) -> Tuple[int, str]:
     closest = None
     closest_dist = None
     for (
@@ -109,38 +107,36 @@ def get_image(all_images: List, word_block: WordBlock) -> (int, str):
     return closest
 
 
-def extract_images_from_pdf(pdf_path: str, output_folder: str) -> None:
+def extract_images_from_pdf(pdf_path: str, output_folder: str, page_from: int, page_to: int) -> None:
     document = fitz.open(pdf_path)
-    # for page_number in range(document.page_count):
-    # page_number = 17
-    page_number = 281
-    # page_number = 16
-    page = document[page_number]
-    words = get_unique_word_positions(page)
-    images = get_images_with_bbox(page)
-    for word_block in words:
-        (
-            x0,
-            y0,
-            x1,
-            y1,
-            word,
-        ) = word_block
-        if not re.match("^\\d+x$", word):
-            continue
-
-        # step = get_step(words, word_block)
-        (image_xref, image_name) = get_image(images, word_block)
-        extracted_image = document.extract_image(image_xref)
-        with open(
-            path.join(
-                output_folder,
-                f'{page_number+1}_{image_name}_{word}.{extracted_image["ext"]}',
-            ),
-            "wb",
-        ) as img_file:
-            img_file.write(extracted_image["image"])
-        print(image_name, word)
+    
+    for page_number in range(page_from, page_to):
+        page = document[page_number]
+        quantities = get_unique_word_positions(page, "^\\d+x$", 'CeraPro-Regular', 6.0, 1578517)
+        ids = get_unique_word_positions(page, "^\\d{6,7}$", 'CeraPro-Light', 6.0, 1578517)
+        images = get_images_with_bbox(page)
+        print(quantities)
+        print(ids)
+        for quantity in quantities:
+            (
+                x0,
+                y0,
+                x1,
+                y1,
+                quantity_text,
+            ) = quantity
+            (image_xref, image_name) = get_closest_image(images, quantity)
+            id = get_closest_word_block(ids, quantity)
+            extracted_image = document.extract_image(image_xref)
+            with open(
+                path.join(
+                    output_folder,
+                    f'{page_number}_{image_name}_{id}_{quantity_text}.{extracted_image["ext"]}',
+                ),
+                "wb",
+            ) as img_file:
+                img_file.write(extracted_image["image"])
+            print(id, quantity_text)
 
 
 def main():
@@ -155,7 +151,7 @@ def main():
 
     if not path.exists(pdf_path):
         download_pdf(pdf_url, pdf_path)
-    extract_images_from_pdf(pdf_path, output_folder)
+    extract_images_from_pdf(pdf_path, output_folder, 281, 286)
 
 
 if __name__ == "__main__":
